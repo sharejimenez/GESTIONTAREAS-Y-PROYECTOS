@@ -59,23 +59,23 @@ addTaskToProject projectId task project =
          else Right $ project { tasks = task : tasks project }
 
 -- Asigna un empleado a una tarea
+-- Cambiar el nombre del parámetro de taskId a tid o taskID
 assignEmployeeToTask :: Int -> Employee -> Project -> Either String Project
-assignEmployeeToTask taskId employee project =
-    case find (\t -> taskId == taskId t) (tasks project) of
+assignEmployeeToTask tid employee project =
+    case find (\t -> tid == taskId t) (tasks project) of
         Nothing -> Left "Tarea no encontrada"
         Just task -> 
             let updatedTask = task { assignedTo = Just employee }
-                updatedTasks = map (\t -> if taskId t == taskId then updatedTask else t) (tasks project)
+                updatedTasks = map (\t -> if taskId t == tid then updatedTask else t) (tasks project)
             in Right $ project { tasks = updatedTasks }
 
--- Marca una tarea como completada
 completeTask :: Int -> Project -> Either String Project
-completeTask taskId project =
-    case find (\t -> taskId == taskId t) (tasks project) of
+completeTask tid project =
+    case find (\t -> tid == taskId t) (tasks project) of
         Nothing -> Left "Tarea no encontrada"
         Just task -> 
             let updatedTask = task { status = Completed }
-                updatedTasks = map (\t -> if taskId t == taskId then updatedTask else t) (tasks project)
+                updatedTasks = map (\t -> if taskId t == tid then updatedTask else t) (tasks project)
             in Right $ project { tasks = updatedTasks }
 
 -- Lista todos los proyectos con sus tareas
@@ -96,10 +96,10 @@ removeProject name = filter (\p -> projectName p /= name)
 
 -- Elimina una tarea de un proyecto
 removeTaskFromProject :: Int -> Project -> Either String Project
-removeTaskFromProject taskId project =
-    if not (any (\t -> taskId == taskId t) (tasks project))
+removeTaskFromProject tid project =
+    if not (any (\t -> tid == taskId t) (tasks project))
     then Left "Tarea no encontrada"
-    else Right $ project { tasks = filter (\t -> taskId /= taskId t) (tasks project) }
+    else Right $ project { tasks = filter (\t -> tid /= taskId t) (tasks project) }
 
 -- Encuentra un proyecto por nombre
 findProject :: String -> ProjectManagementSystem -> Either String Project
@@ -110,7 +110,33 @@ findProject name system =
 
 -- Encuentra una tarea en un proyecto
 findTaskInProject :: Int -> Project -> Either String Task
-findTaskInProject taskId project =
-    case find (\t -> taskId == taskId t) (tasks project) of
+findTaskInProject tid project =
+    case find (\t -> tid == taskId t) (tasks project) of
         Nothing -> Left "Tarea no encontrada en el proyecto"
         Just task -> Right task
+
+-- Ejemplo de cómo usar el sistema
+exampleSystem :: IO ()
+exampleSystem = do
+    let emptySystem = []
+    let project1 = createProject "Web App" (read "2023-01-01") (read "2023-06-30")
+    let system1 = addProject project1 emptySystem
+    
+    let task1 = createTask 1 "Diseñar interfaz" (read "2023-02-01") High
+    let task2 = createTask 2 "Implementar backend" (read "2023-03-15") Medium
+    
+    case findProject "Web App" system1 of
+        Left err -> putStrLn err
+        Right project -> do
+            case addTaskToProject 1 task1 project of
+                Left err -> putStrLn err
+                Right updatedProject -> do
+                    let system2 = removeProject "Web App" system1
+                    let system3 = addProject updatedProject system2
+                    
+                    case findProject "Web App" system3 of
+                        Left err -> putStrLn err
+                        Right project -> do
+                            let (completed, pending) = countTasksStatus project
+                            putStrLn $ "Tareas completadas: " ++ show completed
+                            putStrLn $ "Tareas pendientes: " ++ show pending
