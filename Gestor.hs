@@ -130,12 +130,14 @@ mostrarMenuEmpleados empleados = do
     mapM_ (\e -> printf "[%s] %s\n" (mostrarEmpleadoID $ empleadoID e) (nombreEmpleado e)) empleados
 
 -- Funciones principales
-crearEmpleado :: String -> [Empleado] -> GeneradorID -> (Empleado, [Empleado], GeneradorID)
-crearEmpleado nombre empleados gen = 
-    let (nuevoID, gen') = generarIDEmpleado gen
-        emp = Empleado nuevoID nombre
-    in (emp, emp : empleados, gen')
-
+crearEmpleado :: String -> [Empleado] -> GeneradorID -> Either String (Empleado, [Empleado], GeneradorID)
+crearEmpleado nombre empleados gen
+    | null nombre = Left "El nombre del empleado no puede estar vacío"
+    | otherwise = 
+        let (nuevoID, gen') = generarIDEmpleado gen
+            emp = Empleado nuevoID nombre
+        in Right (emp, emp : empleados, gen')
+--parametros para crear proyecto 
 crearProyecto :: String -> String -> String -> [Proyecto] -> GeneradorID -> Either String (Proyecto, [Proyecto], GeneradorID)
 crearProyecto nombre inicio fin proyectos gen = do
     -- Validar que el nombre no esté vacío
@@ -287,27 +289,27 @@ bucle :: [Proyecto] -> [Empleado] -> GeneradorID -> IO ()
 bucle proyectos empleados gen = do
     putStrLn "\nMenú Principal:"
     putStrLn "1. Crear nuevo proyecto"
-    putStrLn "2. Listar proyectos y tareas"
-    putStrLn "3. Eliminar proyecto"
-    putStrLn "4. Añadir tarea a proyecto"
+    putStrLn "2. Añadir tarea a proyecto"
+    putStrLn "3. Asignar tarea a empleado"
+    putStrLn "4. Registrar empleado"
     putStrLn "5. Eliminar tarea de proyecto"
-    putStrLn "6. Registrar empleado"
-    putStrLn "7. Asignar tarea a empleado"
-    putStrLn "8. Marcar tarea como completada"
+    putStrLn "6. Eliminar proyecto"
+    putStrLn "7. Marcar tarea como completada"
+    putStrLn "8. Listar proyectos y tareas"
     putStrLn "9. Mostrar estadísticas de proyecto"
-    putStrLn "0. Salir Ctrl + C"
+    putStrLn "0. Salir "
     putStr "Seleccione una opción: "
     opcion <- getLine
     
     case opcion of
         "1" -> menuCrearProyecto proyectos empleados gen
-        "2" -> menuListarProyectos proyectos empleados gen
-        "3" -> menuEliminarProyecto proyectos empleados gen
-        "4" -> menuAgregarTarea proyectos empleados gen
-        "5" -> menuEliminarTarea proyectos empleados gen
-        "6" -> menuCrearEmpleado proyectos empleados gen
-        "7" -> menuAsignarTarea proyectos empleados gen
-        "8" -> menuTareaCompletada proyectos empleados gen
+        "2" -> menuAgregarTarea proyectos empleados gen
+        "3" -> menuAsignarTarea proyectos empleados gen     
+        "4" -> menuCrearEmpleado proyectos empleados gen
+        "5" -> menuEliminarTarea proyectos empleados gen   
+        "6" -> menuEliminarProyecto proyectos empleados gen         
+        "7" -> menuTareaCompletada proyectos empleados gen       
+        "8" -> menuListarProyectos proyectos empleados gen                     
         "9" -> menuEstadisticas proyectos empleados gen
         "0" -> putStrLn "Saliendo del sistema..." >> return ()
         _   -> do
@@ -390,7 +392,7 @@ menuAgregarTarea proyectos empleados gen = do
                     
                     fechaLimite <- leerFechaValidada "Fecha límite (YYYY-MM-DD): "
                     
-                    -- ESTA ES LA PARTE MODIFICADA PARA MANEJAR PRIORIDAD
+                    -- PARTE MODIFICADA PARA MANEJAR PRIORIDAD
                     let pedirPrioridad = do
                             putStr "Prioridad (Alta/Media/Baja): "
                             prioridadStr <- getLine
@@ -440,14 +442,17 @@ menuEliminarTarea proyectos empleados gen = do
                                             putStrLn $ "Error: " ++ err
                                             bucle proyectos empleados gen
 
-menuCrearEmpleado :: [Proyecto] -> [Empleado] -> GeneradorID -> IO ()
 menuCrearEmpleado proyectos empleados gen = do
     putStrLn "-----------Creando empleado :D ----------"
     putStr "Nombre del empleado: "
     nombre <- getLine
-    let (nuevoEmpleado, nuevosEmpleados, gen') = crearEmpleado nombre empleados gen
-    putStrLn $ "Empleado registrado con ID: " ++ mostrarEmpleadoID (empleadoID nuevoEmpleado)
-    bucle proyectos nuevosEmpleados gen'
+    case crearEmpleado nombre empleados gen of
+        Left err -> do
+            putStrLn $ "Error: " ++ err
+            menuCrearEmpleado proyectos empleados gen  -- Vuelve a pedir el nombre
+        Right (nuevoEmpleado, nuevosEmpleados, gen') -> do
+            putStrLn $ "Empleado registrado con ID: " ++ mostrarEmpleadoID (empleadoID nuevoEmpleado)
+            bucle proyectos nuevosEmpleados gen'
 
 menuAsignarTarea :: [Proyecto] -> [Empleado] -> GeneradorID -> IO ()
 menuAsignarTarea proyectos empleados gen = do
